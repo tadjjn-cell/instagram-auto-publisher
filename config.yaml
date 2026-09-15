@@ -1,0 +1,26 @@
+# Telegram (secrets like API id/hash/session live in .env or GitHub Secrets)
+telegram:
+  source_chat: "me" # "me" = your own Saved Messages, shared with the other pipelines.
+  require_tag: "ig:" # Only videos whose caption starts with this tag belong to Instagram. Tag is stripped off before use as the topic.
+
+# AI Configuration (Groq, free tier)
+ai:
+  text_model: "openai/gpt-oss-120b"
+
+# Trending signal
+keywords:
+  max_trending: 10 # Google Trends rising/top related queries to feed the AI
+
+# Safety limits
+limits:
+  max_uploads_per_run: 3
+
+# Drip-feed schedule: if you send several videos at once, this spaces out the
+# actual publishing instead of uploading them all back-to-back.
+schedule:
+  post_interval_hours: 0 # Minimum hours between two uploads. 0 = disabled (post as soon as found).
+
+# Paths (relative to project root)
+paths:
+  state_file: "data/state.json"
+  downloads_dir: "downloads"
