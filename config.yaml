@@ -3,6 +3,14 @@ telegram:
   source_chat: "me" # "me" = your own Saved Messages, shared with the other pipelines.
   require_tag: "ig:" # Only videos whose caption starts with this tag belong to Instagram. Tag is stripped off before use as the topic.
 
+# Digital product this account promotes. Captions become "value first, sell second" and end with the CTA.
+# Instagram captions are not clickable: put the real link in your Instagram bio.
+product:
+  enabled: false # set to true after filling name + description
+  name: "EDIT ME: product name"
+  description: "EDIT ME: one sentence on what it is and who it helps"
+  cta: "Link in bio"
+
 # AI Configuration (Groq, free tier)
 ai:
   text_model: "openai/gpt-oss-120b"
