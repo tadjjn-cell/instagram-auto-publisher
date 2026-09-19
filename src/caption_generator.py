@@ -13,14 +13,17 @@ async def generate_instagram_caption(topic: str, trending_queries: list[str], co
     trending_str = ", ".join(trending_queries) if trending_queries else "(none found)"
 
     product = config.get("product", {})
-    if product.get("enabled") and product.get("name"):
+    items = product.get("items", [])
+    if product.get("enabled") and items:
+        catalog = "\n".join(f"- {i['name']}: {i.get('description', '')}" for i in items)
         product_rules = f"""
-This account sells a digital product: "{product['name']}" -- {product.get('description', '')}
+This account sells digital printables at "{product.get('store', 'our store')}":
+{catalog}
 Structure the caption as VALUE FIRST, SELL SECOND:
 - Line 1: a hook about the video's topic (the video itself is the value, not an ad).
 - Lines 2-3: one useful, specific takeaway related to the topic.
-- Then ONE short, natural bridge to the product (what problem it solves for the viewer) and this exact call-to-action on its own line: "{product.get('cta', 'Link in bio')}".
-Never make income/health/result guarantees, never use fake urgency or fake scarcity, never claim testimonials that were not provided. Links are not clickable in Instagram captions, so do not write a URL."""
+- Then, ONLY IF one product above clearly matches the topic, one short natural bridge naming that ONE product and the everyday problem it helps with, followed by this exact call-to-action on its own line: "{product.get('cta', 'Link in bio')}". If no product clearly matches, skip the product mention entirely.
+Hard rules: these are printable organizers, NOT medical products or advice. Never claim to treat, cure, manage, improve or prevent any medical or mental-health condition, never promise results or income, no before/after claims, no fake urgency or scarcity, no invented testimonials. Links are not clickable in Instagram captions, so do not write a URL."""
     else:
         product_rules = ""
 

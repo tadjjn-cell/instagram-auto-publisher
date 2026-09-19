@@ -3,13 +3,20 @@ telegram:
   source_chat: "me" # "me" = your own Saved Messages, shared with the other pipelines.
   require_tag: "ig:" # Only videos whose caption starts with this tag belong to Instagram. Tag is stripped off before use as the topic.
 
-# Digital product this account promotes. Captions become "value first, sell second" and end with the CTA.
-# Instagram captions are not clickable: put the real link in your Instagram bio.
+# Digital products this account promotes (store: claimthis.site). Captions become "value first,
+# sell second": the AI picks the ONE item that matches each video's topic (or none if nothing fits)
+# and ends with the CTA. Instagram captions are not clickable: put the store link in the bio.
 product:
-  enabled: false # set to true after filling name + description
-  name: "EDIT ME: product name"
-  description: "EDIT ME: one sentence on what it is and who it helps"
+  enabled: true
+  store: "Claim This"
   cta: "Link in bio"
+  items:
+    - name: "The Sandwich Generation Starter Pack"
+      description: "4 printables for caregivers raising kids while caring for aging parents"
+    - name: "The ADHD Meltdown Toolkit"
+      description: "printable calm-down strategies for parents when ADHD meltdowns happen"
+    - name: "Type 2 Diabetes Daily Companion"
+      description: "printable daily tracking pack for people managing their type 2 diabetes routine"
 
 # AI Configuration (Groq, free tier)
 ai:
