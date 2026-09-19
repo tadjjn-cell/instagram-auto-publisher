@@ -1,101 +1,74 @@
 """
-Run this ONCE to authorize your Instagram (Business/Creator) account and get a
-long-lived access token + your Instagram user id.
+Run this ONCE (and again roughly every 50 days) to get a long-lived Instagram token.
 
-Requirements before running this:
-- Your Instagram account must be a Professional account (Business or Creator)
-  linked to a Facebook Page.
-- You created a Meta app at developers.facebook.com with "Instagram Graph API"
-  / "Instagram API" product added, and have the App ID + App Secret.
-- You added a valid OAuth Redirect URI in the app's settings (must match what
-  you enter below exactly -- e.g. your GitHub Pages URL).
+Uses "Instagram API with Instagram Login": no Facebook Page needed. Requirements:
+- Your Instagram account is a Professional account (Business or Creator).
+- A Meta app with the Instagram product / "API setup with Instagram login" configured,
+  your Instagram account added as an Instagram Tester (or the app admin), and the
+  Instagram app ID + Instagram app secret (shown in that Instagram settings page).
+- Your redirect URI is listed under "Valid OAuth Redirect URIs" in that page.
 """
 
+import time
 import urllib.parse
+
 import httpx
 
-GRAPH_ROOT = "https://graph.facebook.com/v19.0"
+app_id = input("Instagram App ID: ").strip()
+app_secret = input("Instagram App Secret: ").strip()
+redirect_uri = input("Redirect URI (exactly as registered in the app): ").strip()
 
-app_id = input("Meta App ID: ").strip()
-app_secret = input("Meta App Secret: ").strip()
-redirect_uri = input("Redirect URI (must match your app's registered redirect URI exactly): ").strip()
-
-scopes = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement"
+scopes = "instagram_business_basic,instagram_business_content_publish"
 auth_url = (
-    "https://www.facebook.com/v19.0/dialog/oauth"
+    "https://www.instagram.com/oauth/authorize"
     f"?client_id={urllib.parse.quote(app_id)}"
-    f"&redirect_uri={urllib.parse.quote(redirect_uri)}"
-    f"&scope={urllib.parse.quote(scopes)}"
+    f"&redirect_uri={urllib.parse.quote(redirect_uri, safe='')}"
+    f"&scope={scopes}"
     "&response_type=code"
 )
 
-print("\n1) Open this URL in your browser and approve access with your Facebook account:\n")
+print("\n1) Open this URL in your browser, log in to Instagram and approve:\n")
 print(auth_url)
-print("\n2) After approving, your browser redirects to a URL containing '?code=...'.")
-print("   Copy that FULL URL from the address bar and paste it below.\n")
+print("\n2) You get redirected to your redirect URI with '?code=...' in the address bar")
+print("   (a 404 page is fine). Copy the FULL address and paste it below.\n")
 
-redirected_url = input("Paste the full redirected URL here: ").strip()
-code = urllib.parse.parse_qs(urllib.parse.urlparse(redirected_url).query).get("code", [None])[0]
+redirected = input("Paste the full redirected URL here: ").strip()
+code = urllib.parse.parse_qs(urllib.parse.urlparse(redirected).query).get("code", [None])[0]
 if not code:
     raise SystemExit("Could not find '?code=' in that URL.")
+code = code.split("#")[0]  # Instagram appends '#_' to the redirect
 
-# Exchange code -> short-lived user access token
-resp = httpx.get(
-    f"{GRAPH_ROOT}/oauth/access_token",
-    params={"client_id": app_id, "redirect_uri": redirect_uri, "client_secret": app_secret, "code": code},
-    timeout=30,
-).json()
-if "access_token" not in resp:
-    raise SystemExit(f"Code exchange failed: {resp}")
-short_lived_token = resp["access_token"]
-
-# Exchange short-lived -> long-lived user access token (~60 days)
-resp = httpx.get(
-    f"{GRAPH_ROOT}/oauth/access_token",
-    params={
-        "grant_type": "fb_exchange_token",
+short = httpx.post(
+    "https://api.instagram.com/oauth/access_token",
+    data={
         "client_id": app_id,
         "client_secret": app_secret,
-        "fb_exchange_token": short_lived_token,
+        "grant_type": "authorization_code",
+        "redirect_uri": redirect_uri,
+        "code": code,
     },
     timeout=30,
 ).json()
-if "access_token" not in resp:
-    raise SystemExit(f"Long-lived token exchange failed: {resp}")
-long_lived_token = resp["access_token"]
+if "access_token" not in short:
+    raise SystemExit(f"Code exchange failed: {short}")
 
-# List the Facebook Pages this user manages, with a page access token for each
-pages = httpx.get(f"{GRAPH_ROOT}/me/accounts", params={"access_token": long_lived_token}, timeout=30).json()
-page_list = pages.get("data", [])
-if not page_list:
-    raise SystemExit(f"No Facebook Pages found for this account: {pages}")
-
-print("\nYour Facebook Pages:")
-for i, page in enumerate(page_list):
-    print(f"  [{i}] {page['name']} (id: {page['id']})")
-
-choice = int(input("\nWhich page is linked to your Instagram account? Enter the number: ").strip())
-page = page_list[choice]
-page_access_token = page["access_token"]
-
-# Get the Instagram Business Account id linked to that page
-ig_resp = httpx.get(
-    f"{GRAPH_ROOT}/{page['id']}",
-    params={"fields": "instagram_business_account", "access_token": page_access_token},
+long_lived = httpx.get(
+    "https://graph.instagram.com/access_token",
+    params={
+        "grant_type": "ig_exchange_token",
+        "client_secret": app_secret,
+        "access_token": short["access_token"],
+    },
     timeout=30,
 ).json()
-ig_account = ig_resp.get("instagram_business_account")
-if not ig_account:
-    raise SystemExit(
-        f"No Instagram Business Account linked to page '{page['name']}': {ig_resp}\n"
-        "Make sure your Instagram account is Professional and linked to this Facebook Page."
-    )
+if "access_token" not in long_lived:
+    raise SystemExit(f"Long-lived token exchange failed: {long_lived}")
 
+issued_at = int(time.time())
 print("\n=== COPY THESE — KEEP THEM SECRET ===\n")
-print(f"IG_ACCESS_TOKEN={page_access_token}")
-print(f"IG_USER_ID={ig_account['id']}")
+print(f"IG_ACCESS_TOKEN={long_lived['access_token']}|{issued_at}")
+print(f"IG_USER_ID={short.get('user_id', 'me')}")
 print("\n=======================================")
-print("Save these two as GitHub Secrets.")
-print("\nNote: this page access token inherits the long-lived (~60 day) lifetime")
-print("of the user token it was derived from. Re-run this script to refresh it")
-print("before it expires.")
+print("Save both as GitHub Secrets. The '|number' suffix is the issue date: the pipeline")
+print("uses it to warn you on Telegram before the 60-day token expires. Re-run this script")
+print("and update IG_ACCESS_TOKEN when it warns you.")

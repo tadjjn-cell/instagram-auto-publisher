@@ -10,7 +10,7 @@ from src.telegram_source import fetch_new_videos
 from src.trends import get_trending_queries
 from src.caption_generator import generate_instagram_caption
 from src.github_asset_host import publish_temp_asset, delete_temp_asset
-from src.instagram_uploader import upload_reel
+from src.instagram_uploader import upload_reel, split_token, days_until_expiry
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -50,6 +50,18 @@ async def main() -> None:
     await client.start()
 
     try:
+        ig_token, issued_at = split_token(config["ig_access_token"])
+        remaining = days_until_expiry(issued_at)
+        today = time.strftime("%Y-%m-%d")
+        if remaining is not None and remaining < 15 and state.get("ig_last_expiry_warning") != today:
+            await notify(
+                client,
+                config["telegram_source_chat"],
+                f"⏰ Instagram token expires in ~{max(remaining, 0):.0f} days. Re-run "
+                "setup/get_instagram_token.py and update the IG_ACCESS_TOKEN secret.",
+            )
+            state["ig_last_expiry_warning"] = today
+
         videos = await fetch_new_videos(client, config, state, limit=fetch_limit)
 
         if not videos:
@@ -76,7 +88,7 @@ async def main() -> None:
                 )
 
                 media_id = await asyncio.to_thread(
-                    upload_reel, config["ig_access_token"], config["ig_user_id"], asset["asset_url"], caption
+                    upload_reel, ig_token, config["ig_user_id"], asset["asset_url"], caption
                 )
 
                 logger.info(f"Published to Instagram: {media_id}")
