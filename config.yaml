@@ -10,7 +10,10 @@ product:
   enabled: true
   store: "Claim This"
   cta: "Link in bio"
-  items:
+  shopify_url: "https://www.claimthis.site" # catalog is read from <url>/products.json on every run (new products appear automatically)
+  extra_items: [] # products NOT in the store, e.g. - {name: "...", description: "..."}
+  fallback_items: # used only if the store can't be reached
+
     - name: "The Sandwich Generation Starter Pack"
       description: "4 printables for caregivers raising kids while caring for aging parents"
     - name: "The ADHD Meltdown Toolkit"

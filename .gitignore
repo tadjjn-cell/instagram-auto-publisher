@@ -6,3 +6,4 @@ venv/
 .venv/
 client_secret*.json
 token.json
+bio_backup.txt
